@@ -1,72 +1,126 @@
-import { useDispatch, useSelector } from 'react-redux'
-import starredSlice from '../data/starredSlice'
-import watchLaterSlice from '../data/watchLaterSlice'
-import placeholder from '../assets/not-found-500X750.jpeg'
+import { useCallback, memo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import starredSlice from '../data/starredSlice';
+import watchLaterSlice from '../data/watchLaterSlice';
+import { fetchTrailer } from '../data/viewTrailerSlice';
+import placeholder from '../assets/not-found-500X750.jpeg';
+import { API_KEY, ENDPOINT } from '../constants';
 
-const Movie = ({ movie, viewTrailer, closeCard }) => {
-
-    const state = useSelector((state) => state)
-    const { starred, watchLater } = state
+const Movie = memo(({ movie, isStarred, isWatchLater, lastMovieRef }) => {
+    const dispatch = useDispatch();
     const { starMovie, unstarMovie } = starredSlice.actions
     const { addToWatchLater, removeFromWatchLater } = watchLaterSlice.actions
+    const { id, overview, release_date, poster_path, title } = movie;
+    const shortenedReleaseDate = release_date?.substring(0, 4);
+    const posterUrl = poster_path ? `https://image.tmdb.org/t/p/w500/${poster_path}` : placeholder;
 
-    const dispatch = useDispatch()
+    const addToFavorite = useCallback(async () => {
+        dispatch(starMovie({
+            id,
+            overview,
+            release_date: shortenedReleaseDate,
+            poster_path,
+            title
+        }));
+    }, [dispatch, id, overview, poster_path, shortenedReleaseDate, starMovie, title])
 
-    const myClickHandler = (e) => {
-        if (!e) var e = window.event
-        e.cancelBubble = true
-        if (e.stopPropagation) e.stopPropagation()
-        e.target.parentElement.parentElement.classList.remove('opened')
-    }
+    const removeFromFavorite = useCallback(() => {
+        dispatch(unstarMovie(movie));
+    }, [dispatch, movie, unstarMovie])
+
+    const handleViewTrailer = useCallback(() => {
+        const url = `${ENDPOINT}/movie/${movie.id}?api_key=${API_KEY}&append_to_response=videos`;
+        dispatch(fetchTrailer(url));
+    }, [dispatch, movie.id])
+
+    const handleAddToWatchLater = useCallback(() => {
+        dispatch(addToWatchLater({
+            id,
+            overview,
+            release_date: shortenedReleaseDate,
+            poster_path,
+            title,
+        }));
+    }, [addToWatchLater, dispatch, id, overview, poster_path, shortenedReleaseDate, title])
+
+    const handleRemoveFromWatchLater = useCallback(e => {
+        e.stopPropagation();
+        dispatch(removeFromWatchLater(movie));
+    }, [dispatch, movie, removeFromWatchLater])
+
+    const handleStopPropagation = useCallback(e => e.stopPropagation(), []);
+
+    const handleToggleCard = useCallback(e => {
+        const targetClassList = e.currentTarget.classList;
+        if (targetClassList.contains("opened")) {
+            targetClassList.remove('opened')
+        } else {
+            targetClassList.add('opened');
+        }
+    }, []);
 
     return (
-        <div className="wrapper col-3 col-sm-4 col-md-3 col-lg-3 col-xl-2">
-        <div className="card" onClick={(e) => e.currentTarget.classList.add('opened')} >
-            <div className="card-body text-center">
-                <div className="overlay" />
-                <div className="info_panel">
-                    <div className="overview">{movie.overview}</div>
-                    <div className="year">{movie.release_date?.substring(0, 4)}</div>
-                    {!starred.starredMovies.map(movie => movie.id).includes(movie.id) ? (
-                        <span className="btn-star" data-testid="starred-link" onClick={() => 
-                            dispatch(starMovie({
-                                id: movie.id, 
-                                overview: movie.overview, 
-                                release_date: movie.release_date?.substring(0, 4),
-                                poster_path: movie.poster_path,
-                                title: movie.title
-                            })
-                        )}>
-                            <i className="bi bi-star" />
-                        </span>
-                    ) : (
-                        <span className="btn-star" data-testid="unstar-link" onClick={() => dispatch(unstarMovie(movie))}>
-                            <i className="bi bi-star-fill" data-testid="star-fill" />
-                        </span>
-                    )}
-                    {!watchLater.watchLaterMovies.map(movie => movie.id).includes(movie.id) ? (
-                        <button type="button" data-testid="watch-later" className="btn btn-light btn-watch-later" onClick={() => dispatch(addToWatchLater({
-                                id: movie.id, 
-                                overview: movie.overview, 
-                                release_date: movie.release_date?.substring(0, 4),
-                                poster_path: movie.poster_path,
-                                title: movie.title
-                        }))}>Watch Later</button>
-                    ) : (
-                        <button type="button" data-testid="remove-watch-later" className="btn btn-light btn-watch-later blue" onClick={() => dispatch(removeFromWatchLater(movie))}><i className="bi bi-check"></i></button>
-                    )}
-                    <button type="button" className="btn btn-dark" onClick={() => viewTrailer(movie)}>View Trailer</button>                                                
+        <div className="movie-wrapper col-3 col-sm-4 col-md-3 col-lg-3 col-xl-2" ref={lastMovieRef}>
+            <div className="card" onClick={handleToggleCard}>
+                <div className="card-body text-center">
+                    <div className="overlay" />
+                    <div className="info_panel">
+                        <div className="overview">{overview}</div>
+                        <div className="year">{shortenedReleaseDate}</div>
+                        <div onClick={handleStopPropagation}>
+                            {!isStarred ? (
+                                <span
+                                    role="button"
+                                    className="btn-star"
+                                    data-testid="starred-link"
+                                    onClick={addToFavorite}
+                                >
+                                    <i className="bi bi-star" />
+                                </span>
+                            ) : (
+                                <span
+                                    className="btn-star"
+                                    data-testid="unstar-link"
+                                    onClick={removeFromFavorite}
+                                >
+                                    <i className="bi bi-star-fill" data-testid="star-fill" />
+                                </span>
+                            )}
+                            {!isWatchLater ? (
+                                <button
+                                    type="button"
+                                    data-testid="watch-later"
+                                    className="btn btn-light btn-watch-later"
+                                    onClick={handleAddToWatchLater}
+                                >
+                                    Watch Later
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    data-testid="remove-watch-later"
+                                    className="btn btn-light btn-watch-later blue"
+                                    onClick={handleRemoveFromWatchLater}
+                                >
+                                    <i className="bi bi-check"></i>
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                className="btn btn-dark"
+                                data-testid="view-trailer"
+                                onClick={handleViewTrailer}
+                            >
+                                View Trailer
+                            </button>
+                        </div>
+                    </div>
+                    <img className="center-block" src={posterUrl} alt="Movie poster" />
                 </div>
-                <img className="center-block" src={(movie.poster_path) ? `https://image.tmdb.org/t/p/w500/${movie.poster_path}` : placeholder} alt="Movie poster" />
+                <h6 className="title">{title}</h6>
             </div>
-            <h6 className="title mobile-card">{movie.title}</h6>
-            <h6 className="title">{movie.title}</h6>
-            <button type="button" className="close" onClick={(e) => myClickHandler(e)} aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
         </div>
-    </div>        
     )
-}
+});
 
-export default Movie
+export default Movie;

@@ -1,0 +1,22 @@
+.selected-movies-wrapper {
+    width: 100%;
+
+    .selected-movies {
+        .header {
+            margin-bottom: 48px;
+        }
+    }
+
+    footer {
+        margin-top: 40px;
+
+        .btn {
+            height: 46px;
+            width: auto;
+            padding: 0 20px;
+            font-size: 1rem;
+            background: red;
+            border: none;
+        }
+    }
+}

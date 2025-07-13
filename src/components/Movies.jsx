@@ -1,17 +1,26 @@
-import Movie from './Movie'
-import '../styles/movies.scss'
+import { useDispatch, useSelector } from 'react-redux';
+import Movie from './Movie';
 
-const Movies = ({ movies, viewTrailer, closeCard }) => {
+import '../styles/movies.scss';
+
+const Movies = ({ ref, movies, lastMovieRef }) => {
+    const starredMovies = useSelector(state => state.starred.starredMovies);
+    const watchLater = useSelector(state => state.watchLater.watchLaterMovies);
 
     return (
-        <div data-testid="movies">
-            {movies.movies.results?.map((movie) => {
+        <div ref={ref} data-testid="movies" className="movies">
+            {movies.map((movie, index) => {
+                const movieId = movie.id;    
+                const isStarred = starredMovies.find(m => m.id === movieId);
+                const isWatchLater = watchLater.find(m => m.id === movieId);
+
                 return (
-                    <Movie 
-                        movie={movie} 
-                        key={movie.id}
-                        viewTrailer={viewTrailer}
-                        closeCard={closeCard}
+                    <Movie
+                        key={index}
+                        movie={movie}
+                        isStarred={isStarred}
+                        isWatchLater={isWatchLater}
+                        {...(movies.length === index + 1 ? { lastMovieRef } : {})}
                     />
                 )
             })}
@@ -19,4 +28,4 @@ const Movies = ({ movies, viewTrailer, closeCard }) => {
     )
 }
 
-export default Movies
+export default Movies;
